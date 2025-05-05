@@ -1,0 +1,11 @@
+gradio>=3.30.0
+transformers>=4.30.2
+huggingface-hub>=0.16.4
+pydantic>=2.10.7
+pydantic-settings>=0.2.1
+pdfplumber>=0.10.0
+python-docx>=0.8.11
+python-dotenv>=1.0.0
+anthropic>=1.0.0
+google-generative-ai>=1.0.0
+tiktoken>=0.6.0 
