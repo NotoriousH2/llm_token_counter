@@ -4,9 +4,7 @@ import anthropic
 from google import genai
 from core.tokenizer_loader import load_tokenizer
 from core.token_counter import count_tokens
-from parsers.pdf_parser import parse_pdf
-from parsers.docx_parser import parse_docx
-from parsers.text_parser import parse_text
+from parsers import parse_pdf, parse_docx, parse_text
 from utils.config import SETTINGS
 from utils.logger import get_logger
 from utils.languages import language_manager, KOREAN, ENGLISH
@@ -167,17 +165,20 @@ def update_ui_language(lang):
                  choices=[language_manager.get_text("commercial_model"), language_manager.get_text("huggingface_model")],
                  value=language_manager.get_text("commercial_model")),
         gr.update(label=language_manager.get_text("input_mode_commercial"),
-                 choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")]),
+                 choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
+                 value=language_manager.get_text("select_from_list")),
         gr.update(label=language_manager.get_text("commercial_model_select")),
         gr.update(label=language_manager.get_text("model_id_input_commercial"),
                  placeholder=language_manager.get_text("model_id_placeholder_commercial")),
         gr.update(label=language_manager.get_text("input_mode_huggingface"),
-                 choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")]),
+                 choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
+                 value=language_manager.get_text("select_from_list")),
         gr.update(label=language_manager.get_text("huggingface_model_select")),
         gr.update(label=language_manager.get_text("model_id_input_huggingface"),
                  placeholder=language_manager.get_text("model_id_placeholder_huggingface")),
         gr.update(label=language_manager.get_text("input_method"),
-                 choices=[language_manager.get_text("text_input"), language_manager.get_text("file_upload")]),
+                 choices=[language_manager.get_text("text_input"), language_manager.get_text("file_upload")],
+                 value=language_manager.get_text("text_input")),
         gr.update(label=language_manager.get_text("text_input_label")),
         gr.update(label=language_manager.get_text("file_upload_label")),
         language_manager.get_text("result_title"),
