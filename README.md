@@ -64,11 +64,10 @@
     ```
 
 3.  **필요한 라이브러리 설치:**
-    *(프로젝트 루트에 `requirements.txt` 파일이 필요합니다)*
+   
     ```bash
     pip install -r requirements.txt
     ```
-    *(만약 `requirements.txt` 파일이 없다면, `gradio`, `transformers`, `pdfplumber`, `python-docx`, `tiktoken`, `google-generativeai`, `anthropic`, `huggingface_hub`, `python-dotenv`, `pydantic-settings` 등 필요한 패키지를 설치한 후 `pip freeze > requirements.txt` 명령으로 생성할 수 있습니다.)*
 
 4.  **API 키 설정 (권장):**
     * 프로젝트 루트 디렉토리에 `.env` 라는 이름의 파일을 생성합니다.
