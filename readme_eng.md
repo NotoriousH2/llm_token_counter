@@ -1,6 +1,11 @@
 # LLM Token Counter
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) Upload your content or paste text to calculate the token count across various Large Language Models (LLMs).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
+
+
+Upload your content or paste text to calculate the token count across various Large Language Models (LLMs).
+
+**[🚀 (Live Demo Link)](http://notolab.64bit.kr/tokenizer/)**
 
 ![image](https://github.com/user-attachments/assets/21cc8ace-2ccd-4109-afbe-e954c82eaaf9)
 
