@@ -2,6 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) Upload your content or paste text to calculate the token count across various Large Language Models (LLMs).
 
+![image](https://github.com/user-attachments/assets/21cc8ace-2ccd-4109-afbe-e954c82eaaf9)
+
+
+
 ## Overview
 
 This tool provides a simple web interface to determine the number of tokens a given text or document file represents for different LLMs. Understanding token counts is crucial for estimating API costs, managing context window limits, and optimizing prompts.
