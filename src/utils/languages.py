@@ -10,8 +10,8 @@ ENGLISH = "eng"
 TEXT_RESOURCES = {
     # 제목 및 설명
     "title": {
-        KOREAN: "## LLM 토큰 카운터 (https://github.com/NotoriousH2/llm-token-counter)",
-        ENGLISH: "## LLM Token Counter (https://github.com/NotoriousH2/llm-token-counter)"
+        KOREAN: "## LLM 토큰 카운터 (https://github.com/NotoriousH2/llm_token_counter)",
+        ENGLISH: "## LLM Token Counter (https://github.com/NotoriousH2/llm_token_counter)"
     },
     "subtitle": {
         KOREAN: "템플릿 변환에 필요한 비용은 포함하지 않습니다. Ex) GPT, Claude 종류는 7토큰 추가",
