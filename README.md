@@ -5,6 +5,7 @@
 **[🚀 (Live Demo Link)](http://notolab.64bit.kr/tokenizer/)**
 
 텍스트를 직접 입력하거나 파일을 업로드하여, 다양한 LLM(대규모 언어 모델)에서의 토큰 수를 계산합니다.
+![image](https://github.com/user-attachments/assets/21cc8ace-2ccd-4109-afbe-e954c82eaaf9)
 
 ## 개요
 
