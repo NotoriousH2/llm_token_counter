@@ -7,7 +7,8 @@ Upload your content or paste text to calculate the token count across various La
 
 **[🚀 (Live Demo Link)](http://notolab.64bit.kr/tokenizer/)**
 
-![image](https://github.com/user-attachments/assets/21cc8ace-2ccd-4109-afbe-e954c82eaaf9)
+![image](https://github.com/user-attachments/assets/587968fc-612b-4268-9683-d2c16889f42b)
+
 
 
 
@@ -39,6 +40,8 @@ For example, the sentence "tokenizer is important" might be tokenized as:
 `["token", "izer", " is", " important"]`
 
 Different models use different tokenizers, so the same text can result in a different number and sequence of tokens depending on the model.
+
+![image](https://github.com/user-attachments/assets/21cc8ace-2ccd-4109-afbe-e954c82eaaf9)
 
 ## Why is Tokenization Important?
 
