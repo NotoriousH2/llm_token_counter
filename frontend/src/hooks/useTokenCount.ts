@@ -6,20 +6,68 @@ const API_BASE = '/tokenizer/api';
 
 export function useTokenCount() {
   const {
-    selectedModel,
+    selectedModels,
     modelType,
     textInput,
     selectedFile,
     inputMethod,
-    setResult,
+    setResults,
     setLoading,
     setError,
     addHistoryEntry,
   } = useAppStore();
 
+  const countTokensForModel = async (
+    model: string,
+    text: string
+  ): Promise<TokenCountResponse> => {
+    const request: TokenCountRequest = {
+      text,
+      model,
+      model_type: modelType,
+    };
+
+    const response = await fetch(`${API_BASE}/count-tokens`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorData: ErrorResponse = await response.json();
+      throw new Error(errorData.error || `HTTP error ${response.status}`);
+    }
+
+    return response.json();
+  };
+
+  const countTokensForModelFromFile = async (
+    model: string,
+    file: File
+  ): Promise<TokenCountResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('model', model);
+    formData.append('model_type', modelType);
+
+    const response = await fetch(`${API_BASE}/count-tokens/file`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData: ErrorResponse = await response.json();
+      throw new Error(errorData.error || `HTTP error ${response.status}`);
+    }
+
+    return response.json();
+  };
+
   const countTokensFromText = useCallback(async () => {
-    if (!selectedModel.trim()) {
-      setError('Model name is required');
+    if (selectedModels.length === 0) {
+      setError('At least one model must be selected');
       return;
     }
 
@@ -32,47 +80,34 @@ export function useTokenCount() {
     setError(null);
 
     try {
-      const request: TokenCountRequest = {
-        text: textInput,
-        model: selectedModel,
-        model_type: modelType,
-      };
+      const promises = selectedModels.map((model) =>
+        countTokensForModel(model, textInput)
+      );
 
-      const response = await fetch(`${API_BASE}/count-tokens`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request),
+      const results = await Promise.all(promises);
+      setResults(results);
+
+      // Add to history (summarized entry)
+      const inputPreview = textInput.length > 20 ? textInput.substring(0, 20) + '...' : textInput;
+      results.forEach((result) => {
+        addHistoryEntry({
+          input: inputPreview,
+          model: result.model,
+          tokenCount: result.token_count,
+        });
       });
-
-      if (!response.ok) {
-        const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const result: TokenCountResponse = await response.json();
-      setResult(result);
-
-      // Add to history
-      addHistoryEntry({
-        input: textInput.length > 20 ? textInput.substring(0, 20) + '...' : textInput,
-        model: result.model,
-        tokenCount: result.token_count,
-      });
-
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setError(message);
-      setResult(null);
+      setResults([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedModel, textInput, modelType, setResult, setLoading, setError, addHistoryEntry]);
+  }, [selectedModels, textInput, modelType, setResults, setLoading, setError, addHistoryEntry]);
 
   const countTokensFromFile = useCallback(async () => {
-    if (!selectedModel.trim()) {
-      setError('Model name is required');
+    if (selectedModels.length === 0) {
+      setError('At least one model must be selected');
       return;
     }
 
@@ -85,39 +120,29 @@ export function useTokenCount() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('model', selectedModel);
-      formData.append('model_type', modelType);
+      const promises = selectedModels.map((model) =>
+        countTokensForModelFromFile(model, selectedFile)
+      );
 
-      const response = await fetch(`${API_BASE}/count-tokens/file`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData: ErrorResponse = await response.json();
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const result: TokenCountResponse = await response.json();
-      setResult(result);
+      const results = await Promise.all(promises);
+      setResults(results);
 
       // Add to history
-      addHistoryEntry({
-        input: selectedFile.name,
-        model: result.model,
-        tokenCount: result.token_count,
+      results.forEach((result) => {
+        addHistoryEntry({
+          input: selectedFile.name,
+          model: result.model,
+          tokenCount: result.token_count,
+        });
       });
-
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setError(message);
-      setResult(null);
+      setResults([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedModel, selectedFile, modelType, setResult, setLoading, setError, addHistoryEntry]);
+  }, [selectedModels, selectedFile, modelType, setResults, setLoading, setError, addHistoryEntry]);
 
   const countTokens = useCallback(async () => {
     if (inputMethod === 'file') {

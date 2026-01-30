@@ -9,7 +9,7 @@ import type {
 interface AppState {
   // Model selection
   modelType: ModelType;
-  selectedModel: string;
+  selectedModels: string[];
   officialModels: string[];
   customModels: string[];
   modelVersion: number;
@@ -20,7 +20,7 @@ interface AppState {
   selectedFile: File | null;
 
   // Result state
-  result: TokenCountResponse | null;
+  results: TokenCountResponse[];
   isLoading: boolean;
   error: string | null;
 
@@ -35,12 +35,13 @@ interface AppState {
 
   // Actions
   setModelType: (type: ModelType) => void;
-  setSelectedModel: (model: string) => void;
+  setSelectedModels: (models: string[]) => void;
+  toggleModel: (model: string) => void;
   setModels: (official: string[], custom: string[], version: number) => void;
   setInputMethod: (method: 'text' | 'file') => void;
   setTextInput: (text: string) => void;
   setSelectedFile: (file: File | null) => void;
-  setResult: (result: TokenCountResponse | null) => void;
+  setResults: (results: TokenCountResponse[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   addHistoryEntry: (entry: Omit<HistoryEntry, 'id' | 'timestamp'>) => void;
@@ -52,17 +53,17 @@ interface AppState {
 
 const initialState = {
   modelType: 'commercial' as ModelType,
-  selectedModel: '',
-  officialModels: [],
-  customModels: [],
+  selectedModels: [] as string[],
+  officialModels: [] as string[],
+  customModels: [] as string[],
   modelVersion: 0,
   inputMethod: 'text' as const,
   textInput: '',
-  selectedFile: null,
-  result: null,
+  selectedFile: null as File | null,
+  results: [] as TokenCountResponse[],
   isLoading: false,
-  error: null,
-  history: [],
+  error: null as string | null,
+  history: [] as HistoryEntry[],
   language: 'ko' as const,
   wsConnected: false,
 };
@@ -73,31 +74,30 @@ export const useAppStore = create<AppState>()(
       ...initialState,
 
       setModelType: (type) => {
-        const state = get();
-        const models = type === 'commercial' ? state.officialModels : state.customModels;
         set({
           modelType: type,
-          selectedModel: models[0] || '',
+          selectedModels: [],
         });
       },
 
-      setSelectedModel: (model) => set({ selectedModel: model }),
+      setSelectedModels: (models) => set({ selectedModels: models }),
+
+      toggleModel: (model) => {
+        const state = get();
+        const isSelected = state.selectedModels.includes(model);
+        if (isSelected) {
+          set({ selectedModels: state.selectedModels.filter((m) => m !== model) });
+        } else {
+          set({ selectedModels: [...state.selectedModels, model] });
+        }
+      },
 
       setModels: (official, custom, version) => {
-        const state = get();
-        const newState: Partial<AppState> = {
+        set({
           officialModels: official,
           customModels: custom,
           modelVersion: version,
-        };
-
-        // Set default model if none selected
-        if (!state.selectedModel) {
-          const models = state.modelType === 'commercial' ? official : custom;
-          newState.selectedModel = models[0] || '';
-        }
-
-        set(newState);
+        });
       },
 
       setInputMethod: (method) => set({ inputMethod: method }),
@@ -106,7 +106,7 @@ export const useAppStore = create<AppState>()(
 
       setSelectedFile: (file) => set({ selectedFile: file }),
 
-      setResult: (result) => set({ result }),
+      setResults: (results) => set({ results }),
 
       setLoading: (loading) => set({ isLoading: loading }),
 

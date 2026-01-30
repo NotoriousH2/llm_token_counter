@@ -10,9 +10,7 @@ export function useModelStore() {
     customModels,
     modelVersion,
     modelType,
-    selectedModel,
     setModels,
-    setSelectedModel,
   } = useAppStore();
 
   const fetchModels = useCallback(async () => {
@@ -23,18 +21,10 @@ export function useModelStore() {
       }
       const data: ModelListResponse = await response.json();
       setModels(data.official, data.custom, data.version);
-
-      // Set default model if none selected
-      if (!selectedModel) {
-        const models = modelType === 'commercial' ? data.official : data.custom;
-        if (models.length > 0) {
-          setSelectedModel(models[0]);
-        }
-      }
     } catch (error) {
       console.error('Failed to fetch models:', error);
     }
-  }, [modelType, selectedModel, setModels, setSelectedModel]);
+  }, [setModels]);
 
   // Fetch models on mount
   useEffect(() => {

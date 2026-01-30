@@ -24,11 +24,11 @@
   "custom": [
     {
       "name": "minimaxai/minimax-m1-40k",
-      "usage_count": 1
+      "usage_count": 2
     },
     {
       "name": "zai-org/glm-4.7-flash",
-      "usage_count": 1
+      "usage_count": 2
     },
     {
       "name": "MiniMaxAI/MiniMax-M1-40k",

@@ -11,9 +11,14 @@
   },
 
   "model": {
-    "selectLabel": "모델 선택",
+    "selectLabel": "모델 선택 (다중 선택 가능)",
     "commercialPlaceholder": "모델 선택 또는 직접 입력 (예: gpt-4o, claude-3-5-sonnet)",
-    "huggingfacePlaceholder": "모델 선택 또는 직접 입력 (예: meta-llama/llama-4)"
+    "huggingfacePlaceholder": "모델 선택 또는 직접 입력 (예: meta-llama/llama-4)",
+    "addMore": "추가 모델 검색...",
+    "selectAll": "전체 선택",
+    "clearAll": "전체 해제",
+    "noResults": "검색 결과 없음",
+    "pressEnterToAdd": "Enter를 눌러 \"{{model}}\" 추가"
   },
 
   "input": {
@@ -39,11 +44,13 @@
 
   "result": {
     "title": "결과",
+    "model": "모델",
     "tokens": "토큰",
     "estimatedCost": "예상 비용",
     "contextUsage": "컨텍스트 사용률",
     "costUnknown": "가격 정보 없음",
-    "contextUnknown": "컨텍스트 정보 없음"
+    "contextUnknown": "컨텍스트 정보 없음",
+    "noResults": "모델을 선택하고 계산 버튼을 클릭하세요"
   },
 
   "history": {

@@ -67,7 +67,7 @@ export interface HistoryEntry {
 export interface AppState {
   // Model selection
   modelType: ModelType;
-  selectedModel: string;
+  selectedModels: string[];
   officialModels: string[];
   customModels: string[];
   modelVersion: number;
@@ -78,7 +78,7 @@ export interface AppState {
   selectedFile: File | null;
 
   // Result state
-  result: TokenCountResponse | null;
+  results: TokenCountResponse[];
   isLoading: boolean;
   error: string | null;
 

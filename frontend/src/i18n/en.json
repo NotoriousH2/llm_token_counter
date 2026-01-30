@@ -11,9 +11,14 @@
   },
 
   "model": {
-    "selectLabel": "Select Model",
+    "selectLabel": "Select Models (multiple)",
     "commercialPlaceholder": "Select or type model (e.g., gpt-4o, claude-3-5-sonnet)",
-    "huggingfacePlaceholder": "Select or type model (e.g., meta-llama/llama-4)"
+    "huggingfacePlaceholder": "Select or type model (e.g., meta-llama/llama-4)",
+    "addMore": "Search for more models...",
+    "selectAll": "Select All",
+    "clearAll": "Clear All",
+    "noResults": "No results found",
+    "pressEnterToAdd": "Press Enter to add \"{{model}}\""
   },
 
   "input": {
@@ -39,11 +44,13 @@
 
   "result": {
     "title": "Results",
+    "model": "Model",
     "tokens": "Tokens",
     "estimatedCost": "Est. Cost",
     "contextUsage": "Context Usage",
     "costUnknown": "Price info N/A",
-    "contextUnknown": "Context info N/A"
+    "contextUnknown": "Context info N/A",
+    "noResults": "Select models and click calculate"
   },
 
   "history": {
