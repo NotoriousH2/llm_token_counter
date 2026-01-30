@@ -196,6 +196,64 @@ TEXT_RESOURCES = {
     "select_input_method": {
         KOREAN: "입력 방식을 선택해주세요.",
         ENGLISH: "Please select an input method."
+    },
+
+    # API 키 관련 에러 메시지
+    "api_key_missing_anthropic": {
+        KOREAN: "Anthropic API 키가 설정되지 않았습니다. .env 파일에 ANTHROPIC_API_KEY를 설정해주세요.",
+        ENGLISH: "Anthropic API key not configured. Please set ANTHROPIC_API_KEY in .env file."
+    },
+    "api_key_missing_google": {
+        KOREAN: "Google API 키가 설정되지 않았습니다. .env 파일에 GOOGLE_API_KEY를 설정해주세요.",
+        ENGLISH: "Google API key not configured. Please set GOOGLE_API_KEY in .env file."
+    },
+    "api_key_missing_openai": {
+        KOREAN: "OpenAI API 키가 설정되지 않았습니다. .env 파일에 OPENAI_API_KEY를 설정해주세요.",
+        ENGLISH: "OpenAI API key not configured. Please set OPENAI_API_KEY in .env file."
+    },
+
+    # 파일 관련 에러 메시지
+    "file_too_large": {
+        KOREAN: "파일 크기가 {:.1f}MB입니다. 최대 {}MB까지 지원됩니다.",
+        ENGLISH: "File size is {:.1f}MB. Maximum supported size is {}MB."
+    },
+    "file_not_found": {
+        KOREAN: "파일을 찾을 수 없습니다: {}",
+        ENGLISH: "File not found: {}"
+    },
+    "file_upload_required": {
+        KOREAN: "파일을 업로드해주세요.",
+        ENGLISH: "Please upload a file."
+    },
+
+    # 모델 관련 에러 메시지
+    "model_name_empty": {
+        KOREAN: "모델 이름이 비어있습니다. 모델을 선택하거나 입력해주세요.",
+        ENGLISH: "Model name is empty. Please select or enter a model name."
+    },
+    "model_name_invalid": {
+        KOREAN: "잘못된 모델 이름 형식입니다: {}",
+        ENGLISH: "Invalid model name format: {}"
+    },
+
+    # API별 에러 메시지
+    "api_error_anthropic": {
+        KOREAN: "Anthropic API 오류: {}",
+        ENGLISH: "Anthropic API error: {}"
+    },
+    "api_error_google": {
+        KOREAN: "Google API 오류: {}",
+        ENGLISH: "Google API error: {}"
+    },
+    "api_error_openai": {
+        KOREAN: "OpenAI/tiktoken 오류: {}",
+        ENGLISH: "OpenAI/tiktoken error: {}"
+    },
+
+    # 입력 관련 에러 메시지
+    "text_input_empty": {
+        KOREAN: "텍스트가 비어있습니다. 텍스트를 입력해주세요.",
+        ENGLISH: "Text input is empty. Please enter some text."
     }
 }
 

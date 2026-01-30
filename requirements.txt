@@ -10,3 +10,4 @@ anthropic
 google-generative-ai
 google-genai
 tiktoken
+pytest>=7.0.0
