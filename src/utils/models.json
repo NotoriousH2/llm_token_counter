@@ -7,13 +7,14 @@
     "gpt-5.2"
   ],
   "custom": [
-    "deepseek-ai/DeepSeek-V3",
-    "THUDM/GLM-4-9B-Chat",
+    "MiniMaxAI/MiniMax-M1-40k",
     "Qwen/Qwen3-32B",
     "Qwen/Qwen3-8B",
+    "THUDM/GLM-4-9B-Chat",
+    "deepseek-ai/DeepSeek-V3",
+    "google/gemma-3-27b-it",
     "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-    "MiniMaxAI/MiniMax-M1-40k",
     "microsoft/phi-4",
-    "google/gemma-3-27b-it"
+    "zai-org/glm-4.7-flash"
   ]
 }

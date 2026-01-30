@@ -30,7 +30,6 @@ app = FastAPI(
     description="API for counting tokens across various LLM models",
     version="2.0.0",
     lifespan=lifespan,
-    root_path="/tokenizer",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
