@@ -1,20 +1,66 @@
 {
   "official": [
-    "claude-opus-4-5-20251101",
-    "claude-sonnet-4-5-20250929",
-    "gemini-3-flash-preview",
-    "gemini-3-pro-preview",
-    "gpt-5.2"
+    {
+      "name": "claude-opus-4-5-20251101",
+      "usage_count": 0
+    },
+    {
+      "name": "claude-sonnet-4-5-20250929",
+      "usage_count": 0
+    },
+    {
+      "name": "gemini-3-flash-preview",
+      "usage_count": 0
+    },
+    {
+      "name": "gemini-3-pro-preview",
+      "usage_count": 0
+    },
+    {
+      "name": "gpt-5.2",
+      "usage_count": 0
+    }
   ],
   "custom": [
-    "MiniMaxAI/MiniMax-M1-40k",
-    "Qwen/Qwen3-32B",
-    "Qwen/Qwen3-8B",
-    "THUDM/GLM-4-9B-Chat",
-    "deepseek-ai/DeepSeek-V3",
-    "google/gemma-3-27b-it",
-    "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-    "microsoft/phi-4",
-    "zai-org/glm-4.7-flash"
+    {
+      "name": "minimaxai/minimax-m1-40k",
+      "usage_count": 1
+    },
+    {
+      "name": "zai-org/glm-4.7-flash",
+      "usage_count": 1
+    },
+    {
+      "name": "MiniMaxAI/MiniMax-M1-40k",
+      "usage_count": 0
+    },
+    {
+      "name": "Qwen/Qwen3-32B",
+      "usage_count": 0
+    },
+    {
+      "name": "Qwen/Qwen3-8B",
+      "usage_count": 0
+    },
+    {
+      "name": "THUDM/GLM-4-9B-Chat",
+      "usage_count": 0
+    },
+    {
+      "name": "deepseek-ai/DeepSeek-V3",
+      "usage_count": 0
+    },
+    {
+      "name": "google/gemma-3-27b-it",
+      "usage_count": 0
+    },
+    {
+      "name": "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      "usage_count": 0
+    },
+    {
+      "name": "microsoft/phi-4",
+      "usage_count": 0
+    }
   ]
 }

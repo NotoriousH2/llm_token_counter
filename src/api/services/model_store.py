@@ -4,7 +4,7 @@ Model store service with subscriber pattern for real-time updates
 import json
 import os
 from threading import Lock
-from typing import Callable, Optional, Coroutine, Any
+from typing import Callable, Optional, Coroutine, Any, TypedDict
 
 # Path to model store JSON file
 MODEL_STORE_PATH = os.path.join(
@@ -23,6 +23,31 @@ AsyncCallback = Callable[[dict, int], Coroutine[Any, Any, None]]
 # Subscriber callbacks for real-time updates
 _subscribers: list[Callable[[dict, int], None]] = []
 _async_subscribers: list[AsyncCallback] = []
+
+# Default limit for custom models
+DEFAULT_CUSTOM_MODEL_LIMIT = 20
+
+
+class ModelEntry(TypedDict):
+    name: str
+    usage_count: int
+
+
+def _migrate_store_format(store: dict) -> tuple[dict, bool]:
+    """Migrate old format (string[]) to new format ({name, usage_count}[])"""
+    migrated = {"official": [], "custom": []}
+    changed = False
+
+    for key in ["official", "custom"]:
+        items = store.get(key, [])
+        for item in items:
+            if isinstance(item, str):
+                migrated[key].append({"name": item, "usage_count": 0})
+                changed = True
+            elif isinstance(item, dict):
+                migrated[key].append(item)
+
+    return migrated, changed
 
 
 def _is_cache_valid() -> bool:
@@ -48,12 +73,16 @@ def _load_store() -> dict:
 
     if not os.path.exists(MODEL_STORE_PATH):
         store = {
-            "official": ["claude-3-7-sonnet", "gemini-2.0-flash", "gpt-4o"],
+            "official": [
+                {"name": "claude-3-7-sonnet", "usage_count": 0},
+                {"name": "gemini-2.0-flash", "usage_count": 0},
+                {"name": "gpt-4o", "usage_count": 0}
+            ],
             "custom": [
-                "meta-llama/llama-4-maverick-17b-128e-instruct",
-                "microsoft/phi-4",
-                "qwen/qwen2.5-7b-instruct",
-                "qwen/qwen3-8b"
+                {"name": "meta-llama/llama-4-maverick-17b-128e-instruct", "usage_count": 0},
+                {"name": "microsoft/phi-4", "usage_count": 0},
+                {"name": "qwen/qwen2.5-7b-instruct", "usage_count": 0},
+                {"name": "qwen/qwen3-8b", "usage_count": 0}
             ]
         }
         _save_store(store)
@@ -61,6 +90,12 @@ def _load_store() -> dict:
 
     with open(MODEL_STORE_PATH, 'r', encoding='utf-8') as f:
         store = json.load(f)
+
+    # Migrate old format to new format if needed
+    store, migrated = _migrate_store_format(store)
+    if migrated:
+        _save_store(store)
+        return store
 
     _cache = store
     _cache_mtime = os.path.getmtime(MODEL_STORE_PATH)
@@ -71,8 +106,16 @@ def _save_store(store: dict) -> None:
     """Save store to file and update cache"""
     global _cache, _cache_mtime, _version
 
-    store['official'] = sorted(store.get('official', []))
-    store['custom'] = sorted(store.get('custom', []))
+    # Sort official models alphabetically by name
+    store['official'] = sorted(
+        store.get('official', []),
+        key=lambda x: x['name'] if isinstance(x, dict) else x
+    )
+    # Sort custom models by usage_count (descending), then by name
+    store['custom'] = sorted(
+        store.get('custom', []),
+        key=lambda x: (-x.get('usage_count', 0), x['name']) if isinstance(x, dict) else (0, x)
+    )
 
     # Atomic write via temp file
     tmp_path = MODEL_STORE_PATH + '.tmp'
@@ -128,83 +171,143 @@ def get_version() -> int:
 
 
 def get_official_models() -> list[str]:
-    """Get list of commercial models"""
+    """Get list of commercial models (names only)"""
     store = _load_store()
-    return store.get("official", [])
+    models = store.get("official", [])
+    return [m['name'] if isinstance(m, dict) else m for m in models]
 
 
-def get_custom_models() -> list[str]:
-    """Get list of HuggingFace models"""
+def get_custom_models(limit: int = DEFAULT_CUSTOM_MODEL_LIMIT) -> list[str]:
+    """Get list of HuggingFace models (names only), sorted by usage_count, limited"""
     store = _load_store()
-    return store.get("custom", [])
+    models = store.get("custom", [])
+    # Already sorted by usage_count descending in _save_store
+    names = [m['name'] if isinstance(m, dict) else m for m in models]
+    return names[:limit]
 
 
 def get_all_models() -> dict:
-    """Get all models with version"""
-    store = _load_store()
+    """Get all models with version (returns names only, custom limited to top 20)"""
     return {
-        "official": store.get("official", []),
-        "custom": store.get("custom", []),
+        "official": get_official_models(),
+        "custom": get_custom_models(DEFAULT_CUSTOM_MODEL_LIMIT),
         "version": _version
     }
 
 
+def _find_model_entry(models: list, name: str) -> tuple[int, Optional[dict]]:
+    """Find model entry by name. Returns (index, entry) or (-1, None) if not found."""
+    for i, m in enumerate(models):
+        model_name = m['name'] if isinstance(m, dict) else m
+        if model_name == name:
+            return i, m
+    return -1, None
+
+
 def add_official_model(model_name: str) -> bool:
-    """Add a commercial model. Returns True if model was added."""
+    """Add a commercial model or increment usage. Returns True if model was new."""
     name = model_name.lower().strip()
     with _lock:
         store = _load_store()
-        if name not in store.get("official", []):
-            store["official"].append(name)
+        models = store.get("official", [])
+        idx, entry = _find_model_entry(models, name)
+
+        if idx >= 0:
+            # Existing model - increment usage_count
+            if isinstance(entry, dict):
+                entry['usage_count'] = entry.get('usage_count', 0) + 1
+            else:
+                # Migrate string entry to dict
+                models[idx] = {"name": name, "usage_count": 1}
             _save_store(store)
-            _notify_subscribers(store, _version)
+            _notify_subscribers(get_all_models(), _version)
+            return False
+        else:
+            # New model
+            store["official"].append({"name": name, "usage_count": 1})
+            _save_store(store)
+            _notify_subscribers(get_all_models(), _version)
             return True
-    return False
 
 
 def add_custom_model(model_name: str) -> bool:
-    """Add a HuggingFace model. Returns True if model was added."""
+    """Add a HuggingFace model or increment usage. Returns True if model was new."""
     name = model_name.lower().strip()
     with _lock:
         store = _load_store()
-        if name not in store.get("custom", []):
-            store["custom"].append(name)
+        models = store.get("custom", [])
+        idx, entry = _find_model_entry(models, name)
+
+        if idx >= 0:
+            # Existing model - increment usage_count
+            if isinstance(entry, dict):
+                entry['usage_count'] = entry.get('usage_count', 0) + 1
+            else:
+                # Migrate string entry to dict
+                models[idx] = {"name": name, "usage_count": 1}
             _save_store(store)
-            _notify_subscribers(store, _version)
+            _notify_subscribers(get_all_models(), _version)
+            return False
+        else:
+            # New model
+            store["custom"].append({"name": name, "usage_count": 1})
+            _save_store(store)
+            _notify_subscribers(get_all_models(), _version)
             return True
-    return False
 
 
 async def add_official_model_async(model_name: str) -> bool:
-    """Add a commercial model (async version). Returns True if model was added."""
+    """Add a commercial model or increment usage (async version). Returns True if model was new."""
     name = model_name.lower().strip()
-    added = False
+    is_new = False
     with _lock:
         store = _load_store()
-        if name not in store.get("official", []):
-            store["official"].append(name)
-            _save_store(store)
-            added = True
+        models = store.get("official", [])
+        idx, entry = _find_model_entry(models, name)
 
-    if added:
-        await _notify_async_subscribers(store, _version)
-    return added
+        if idx >= 0:
+            # Existing model - increment usage_count
+            if isinstance(entry, dict):
+                entry['usage_count'] = entry.get('usage_count', 0) + 1
+            else:
+                # Migrate string entry to dict
+                models[idx] = {"name": name, "usage_count": 1}
+            _save_store(store)
+        else:
+            # New model
+            store["official"].append({"name": name, "usage_count": 1})
+            _save_store(store)
+            is_new = True
+
+    await _notify_async_subscribers(get_all_models(), _version)
+    return is_new
 
 
 async def add_custom_model_async(model_name: str) -> bool:
-    """Add a HuggingFace model (async version). Returns True if model was added."""
+    """Add a HuggingFace model or increment usage (async version). Returns True if model was new."""
     name = model_name.lower().strip()
-    added = False
+    is_new = False
     with _lock:
         store = _load_store()
-        if name not in store.get("custom", []):
-            store["custom"].append(name)
-            _save_store(store)
-            added = True
+        models = store.get("custom", [])
+        idx, entry = _find_model_entry(models, name)
 
-    if added:
-        await _notify_async_subscribers(store, _version)
-    return added
+        if idx >= 0:
+            # Existing model - increment usage_count
+            if isinstance(entry, dict):
+                entry['usage_count'] = entry.get('usage_count', 0) + 1
+            else:
+                # Migrate string entry to dict
+                models[idx] = {"name": name, "usage_count": 1}
+            _save_store(store)
+        else:
+            # New model
+            store["custom"].append({"name": name, "usage_count": 1})
+            _save_store(store)
+            is_new = True
+
+    await _notify_async_subscribers(get_all_models(), _version)
+    return is_new
 
 
 def invalidate_cache() -> None:

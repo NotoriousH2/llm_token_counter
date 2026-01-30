@@ -21,7 +21,15 @@
     "textPlaceholder": "Paste your text here.\nExample: Hello, this is a token count test.",
     "fileLabel": "Upload File (.pdf, .txt, .md, .docx)",
     "fileDropText": "Drag a file here or click to select",
-    "fileSelected": "Selected file"
+    "fileSelected": "Selected file",
+    "exampleButton": {
+      "korean": "Korean Example",
+      "english": "English Example"
+    },
+    "exampleText": {
+      "korean": "인공지능(AI)은 인간의 학습능력, 추론능력, 지각능력을 인공적으로 구현한 컴퓨터 시스템입니다. 최근 대규모 언어 모델(LLM)의 발전으로 자연어 처리, 코드 생성, 창작 등 다양한 분야에서 혁신적인 성과를 보여주고 있습니다. 이러한 AI 기술은 의료, 금융, 교육 등 산업 전반에 걸쳐 적용되며 우리의 일상을 크게 변화시키고 있습니다.",
+      "english": "Artificial Intelligence (AI) is a computer system that artificially implements human learning, reasoning, and perception capabilities. With recent advances in Large Language Models (LLMs), we are seeing innovative achievements in various fields including natural language processing, code generation, and creative writing. These AI technologies are being applied across industries such as healthcare, finance, and education, significantly transforming our daily lives."
+    }
   },
 
   "button": {

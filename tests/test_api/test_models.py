@@ -112,3 +112,52 @@ class TestPricing:
 
         # Should match claude-3-5-sonnet
         assert data["input_price"] is not None
+
+
+class TestModelUsageTracking:
+    """모델 사용 추적 API 테스트"""
+
+    def test_custom_models_api_returns_max_20(self, client):
+        """GET /api/models가 custom 최대 20개 반환"""
+        response = client.get("/api/models")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # custom should be limited to 20
+        assert len(data["custom"]) <= 20
+
+    def test_models_api_returns_names_only(self, client):
+        """GET /api/models가 이름만 반환 (usage_count 제외)"""
+        response = client.get("/api/models")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should return list of strings, not objects
+        for model in data["official"]:
+            assert isinstance(model, str)
+        for model in data["custom"]:
+            assert isinstance(model, str)
+
+    def test_add_model_twice_increments_usage(self, client):
+        """같은 모델을 두 번 추가하면 usage_count 증가"""
+        model_name = "test-usage-tracking-model"
+
+        # Add model first time
+        response1 = client.post(
+            "/api/models",
+            json={"name": model_name, "type": "custom"}
+        )
+        assert response1.status_code == 200
+
+        # Add model second time
+        response2 = client.post(
+            "/api/models",
+            json={"name": model_name, "type": "custom"}
+        )
+        assert response2.status_code == 200
+
+        # Both should succeed (no duplicate error)
+        # The model should be in the list
+        assert model_name in response2.json()["custom"]

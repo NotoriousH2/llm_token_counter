@@ -7,6 +7,8 @@ import tempfile
 import pytest
 from unittest.mock import patch
 
+from api.services import model_store as api_model_store
+
 
 class TestModelStorePersistence:
     """모델 저장소 영속성 테스트"""
@@ -236,3 +238,157 @@ class TestHuggingFaceModelIntegration:
             model_store._invalidate_cache()
             official_models = model_store.get_official_models()
             assert new_model in official_models
+
+
+class TestModelStoreUsageCount:
+    """usage_count 기능 테스트"""
+
+    @pytest.fixture
+    def temp_model_store(self):
+        """테스트용 임시 모델 저장소 생성 (구 형식)"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            # Old format with string arrays
+            initial_data = {
+                "official": ["gpt-4o", "claude-3-7-sonnet"],
+                "custom": ["microsoft/phi-4", "qwen/qwen3-8b"]
+            }
+            json.dump(initial_data, f)
+            temp_path = f.name
+
+        yield temp_path
+
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        tmp_path = temp_path + '.tmp'
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    @pytest.fixture
+    def temp_model_store_new_format(self):
+        """테스트용 임시 모델 저장소 생성 (신 형식)"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            # New format with objects
+            initial_data = {
+                "official": [
+                    {"name": "gpt-4o", "usage_count": 5},
+                    {"name": "claude-3-7-sonnet", "usage_count": 3}
+                ],
+                "custom": [
+                    {"name": "microsoft/phi-4", "usage_count": 10},
+                    {"name": "qwen/qwen3-8b", "usage_count": 2}
+                ]
+            }
+            json.dump(initial_data, f)
+            temp_path = f.name
+
+        yield temp_path
+
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        tmp_path = temp_path + '.tmp'
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+    def test_migrate_string_array_to_object(self, temp_model_store):
+        """구 형식에서 신 형식으로 마이그레이션"""
+        with patch('api.services.model_store.MODEL_STORE_PATH', temp_model_store):
+            api_model_store.invalidate_cache()
+
+            # Load triggers migration
+            api_model_store.get_custom_models()
+
+            # Check file has new format
+            with open(temp_model_store, 'r') as f:
+                data = json.load(f)
+
+            # Should be objects with usage_count
+            assert isinstance(data['official'][0], dict)
+            assert 'name' in data['official'][0]
+            assert 'usage_count' in data['official'][0]
+            assert data['official'][0]['usage_count'] == 0
+
+    def test_add_existing_model_increments_usage(self, temp_model_store_new_format):
+        """이미 존재하는 모델 추가 시 usage_count 증가"""
+        with patch('api.services.model_store.MODEL_STORE_PATH', temp_model_store_new_format):
+            api_model_store.invalidate_cache()
+
+            # Get initial usage count
+            with open(temp_model_store_new_format, 'r') as f:
+                initial_data = json.load(f)
+
+            initial_count = next(
+                m['usage_count'] for m in initial_data['custom']
+                if m['name'] == 'microsoft/phi-4'
+            )
+
+            # Add existing model
+            result = api_model_store.add_custom_model("microsoft/phi-4")
+            assert result is False  # Not a new model
+
+            # Check usage_count increased
+            with open(temp_model_store_new_format, 'r') as f:
+                updated_data = json.load(f)
+
+            updated_count = next(
+                m['usage_count'] for m in updated_data['custom']
+                if m['name'] == 'microsoft/phi-4'
+            )
+            assert updated_count == initial_count + 1
+
+    def test_get_custom_models_sorted_by_usage(self, temp_model_store_new_format):
+        """custom 모델이 usage_count 내림차순 정렬"""
+        with patch('api.services.model_store.MODEL_STORE_PATH', temp_model_store_new_format):
+            api_model_store.invalidate_cache()
+
+            # microsoft/phi-4 has 10, qwen/qwen3-8b has 2
+            custom_models = api_model_store.get_custom_models()
+
+            # Should be sorted by usage_count descending
+            assert custom_models[0] == "microsoft/phi-4"
+            assert custom_models[1] == "qwen/qwen3-8b"
+
+    def test_get_custom_models_limited_to_20(self):
+        """custom 모델이 최대 20개로 제한"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            # Create 30 custom models
+            custom = [{"name": f"org/model-{i}", "usage_count": 30 - i} for i in range(30)]
+            initial_data = {"official": [], "custom": custom}
+            json.dump(initial_data, f)
+            temp_path = f.name
+
+        try:
+            with patch('api.services.model_store.MODEL_STORE_PATH', temp_path):
+                api_model_store.invalidate_cache()
+
+                custom_models = api_model_store.get_custom_models()
+                assert len(custom_models) == 20
+
+                # Should be top 20 by usage_count
+                assert custom_models[0] == "org/model-0"  # usage_count 30
+                assert custom_models[19] == "org/model-19"  # usage_count 11
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            tmp_path = temp_path + '.tmp'
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def test_new_model_starts_with_usage_count_1(self, temp_model_store_new_format):
+        """새 모델 추가 시 usage_count=1"""
+        with patch('api.services.model_store.MODEL_STORE_PATH', temp_model_store_new_format):
+            api_model_store.invalidate_cache()
+
+            # Add new model
+            new_model = "deepseek-ai/deepseek-v3"
+            result = api_model_store.add_custom_model(new_model)
+            assert result is True  # Is a new model
+
+            # Check usage_count is 1
+            with open(temp_model_store_new_format, 'r') as f:
+                data = json.load(f)
+
+            new_entry = next(
+                m for m in data['custom']
+                if m['name'] == new_model
+            )
+            assert new_entry['usage_count'] == 1
