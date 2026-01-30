@@ -1,13 +1,30 @@
-gradio>=4.0.0
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+python-multipart>=0.0.6
+
+# Keep gradio for backward compatibility (optional)
+# gradio>=4.0.0
+
+# LLM libraries
 transformers>=4.30.2
 huggingface-hub>=0.16.4
-pydantic>=2.10.7
-pydantic-settings>=0.2.1
-pdfplumber>=0.10.0
-python-docx>=0.8.11
-python-dotenv>=1.0.0
 anthropic
 google-generative-ai
 google-genai
 tiktoken
+
+# File parsing
+pdfplumber>=0.10.0
+python-docx>=0.8.11
+
+# Configuration
+pydantic>=2.10.7
+pydantic-settings>=0.2.1
+python-dotenv>=1.0.0
+
+# Testing
 pytest>=7.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.26.0

@@ -1,0 +1,76 @@
+{
+  "title": "LLM Token Counter",
+  "subtitle": "Template conversion costs are not included. Ex) GPT, Claude types add 7 tokens",
+  "quickStart": "Quick Start: Select model → Enter text → Click calculate",
+
+  "tabs": {
+    "commercial": "Commercial Models",
+    "huggingface": "HuggingFace Models",
+    "textInput": "Text Input",
+    "fileUpload": "File Upload"
+  },
+
+  "model": {
+    "selectLabel": "Select Model",
+    "commercialPlaceholder": "Select or type model (e.g., gpt-4o, claude-3-5-sonnet)",
+    "huggingfacePlaceholder": "Select or type model (e.g., meta-llama/llama-4)"
+  },
+
+  "input": {
+    "textLabel": "Enter Text",
+    "textPlaceholder": "Paste your text here.\nExample: Hello, this is a token count test.",
+    "fileLabel": "Upload File (.pdf, .txt, .md, .docx)",
+    "fileDropText": "Drag a file here or click to select",
+    "fileSelected": "Selected file"
+  },
+
+  "button": {
+    "calculate": "Calculate Tokens",
+    "calculating": "Calculating..."
+  },
+
+  "result": {
+    "title": "Results",
+    "tokens": "Tokens",
+    "estimatedCost": "Est. Cost",
+    "contextUsage": "Context Usage",
+    "costUnknown": "Price info N/A",
+    "contextUnknown": "Context info N/A"
+  },
+
+  "history": {
+    "title": "Recent History",
+    "input": "Input",
+    "model": "Model",
+    "count": "Token Count",
+    "empty": "No history"
+  },
+
+  "language": {
+    "setting": "Language Setting",
+    "toggle": "한국어"
+  },
+
+  "error": {
+    "modelNameEmpty": "Model name is empty. Please select or enter a model name.",
+    "textInputEmpty": "Text input is empty. Please enter some text.",
+    "fileUploadRequired": "Please upload a file.",
+    "fileTooLarge": "File size is too large. Maximum supported size is 20MB.",
+    "unsupportedFile": "Unsupported file format.",
+    "apiKeyMissing": {
+      "anthropic": "Anthropic API key not configured.",
+      "google": "Google API key not configured.",
+      "openai": "OpenAI API key not configured."
+    },
+    "apiError": "API error occurred",
+    "networkError": "Network error occurred",
+    "unknownError": "Unknown error occurred"
+  },
+
+  "status": {
+    "processing": "Processing...",
+    "complete": "Complete",
+    "wsConnected": "Real-time connected",
+    "wsDisconnected": "Disconnected"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "title": "LLM 토큰 카운터",
+  "subtitle": "템플릿 변환에 필요한 비용은 포함하지 않습니다. Ex) GPT, Claude 종류는 7토큰 추가",
+  "quickStart": "빠른 시작: 모델 선택 → 텍스트 입력 → 계산 버튼 클릭",
+
+  "tabs": {
+    "commercial": "상용 모델",
+    "huggingface": "허깅페이스 모델",
+    "textInput": "텍스트 입력",
+    "fileUpload": "파일 업로드"
+  },
+
+  "model": {
+    "selectLabel": "모델 선택",
+    "commercialPlaceholder": "모델 선택 또는 직접 입력 (예: gpt-4o, claude-3-5-sonnet)",
+    "huggingfacePlaceholder": "모델 선택 또는 직접 입력 (예: meta-llama/llama-4)"
+  },
+
+  "input": {
+    "textLabel": "텍스트 입력",
+    "textPlaceholder": "여기에 텍스트를 붙여넣으세요.\n예: 안녕하세요, 토큰 계산 테스트입니다.",
+    "fileLabel": "파일 업로드 (.pdf, .txt, .md, .docx)",
+    "fileDropText": "파일을 여기에 드래그하거나 클릭하여 선택",
+    "fileSelected": "선택된 파일"
+  },
+
+  "button": {
+    "calculate": "토큰 수 계산하기",
+    "calculating": "계산 중..."
+  },
+
+  "result": {
+    "title": "결과",
+    "tokens": "토큰",
+    "estimatedCost": "예상 비용",
+    "contextUsage": "컨텍스트 사용률",
+    "costUnknown": "가격 정보 없음",
+    "contextUnknown": "컨텍스트 정보 없음"
+  },
+
+  "history": {
+    "title": "최근 기록",
+    "input": "입력",
+    "model": "모델",
+    "count": "토큰 수",
+    "empty": "기록 없음"
+  },
+
+  "language": {
+    "setting": "언어 설정",
+    "toggle": "English"
+  },
+
+  "error": {
+    "modelNameEmpty": "모델 이름이 비어있습니다. 모델을 선택하거나 입력해주세요.",
+    "textInputEmpty": "텍스트가 비어있습니다. 텍스트를 입력해주세요.",
+    "fileUploadRequired": "파일을 업로드해주세요.",
+    "fileTooLarge": "파일 크기가 너무 큽니다. 최대 20MB까지 지원됩니다.",
+    "unsupportedFile": "지원하지 않는 파일 형식입니다.",
+    "apiKeyMissing": {
+      "anthropic": "Anthropic API 키가 설정되지 않았습니다.",
+      "google": "Google API 키가 설정되지 않았습니다.",
+      "openai": "OpenAI API 키가 설정되지 않았습니다."
+    },
+    "apiError": "API 오류가 발생했습니다",
+    "networkError": "네트워크 오류가 발생했습니다",
+    "unknownError": "알 수 없는 오류가 발생했습니다"
+  },
+
+  "status": {
+    "processing": "처리 중...",
+    "complete": "완료",
+    "wsConnected": "실시간 연결됨",
+    "wsDisconnected": "연결 끊김"
+  }
+}

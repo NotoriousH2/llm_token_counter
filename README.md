@@ -2,9 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [English Readme (영문 설명서)](readme_eng.md)
 
-**[🚀 (Live Demo Link)](http://notolab.64bit.kr/tokenizer/)**
+**[🚀 (Live Demo Link)](https://notolab.64bit.kr/tokenizer/)**
 
 텍스트를 직접 입력하거나 파일을 업로드하여, 다양한 LLM(대규모 언어 모델)에서의 토큰 수를 계산합니다.
+
+> **v2.0 업데이트**: FastAPI + React 아키텍처로 전환. WebSocket 기반 실시간 모델 동기화, REST API 지원.
 
 ![image](https://github.com/user-attachments/assets/587968fc-612b-4268-9683-d2c16889f42b)
 
@@ -90,6 +92,30 @@
     * 이 키들은 해당 상용 모델의 토큰 수를 계산하고, 허깅페이스 허브의 비공개/제한된 모델에 접근하는 데 사용됩니다.
 
 ## 사용 방법
+
+### v2.0 (FastAPI + React) - 권장
+
+1.  **프론트엔드 빌드** (최초 1회):
+    ```bash
+    cd frontend
+    npm install
+    npm run build
+    cd ..
+    ```
+
+2.  **서버 실행:**
+    ```bash
+    PYTHONPATH=src uvicorn api.main:app --host 0.0.0.0 --port 7860
+    ```
+
+3.  **인터페이스 접속:**
+    * 웹 브라우저를 열고 `http://127.0.0.1:7860` 또는 `http://0.0.0.0:7860`로 접속합니다.
+
+4.  **API 문서:**
+    * Swagger UI: `http://localhost:7860/tokenizer/api/docs`
+    * ReDoc: `http://localhost:7860/tokenizer/api/redoc`
+
+### v1.0 (Gradio) - 레거시
 
 1.  **서버 실행:**
     ```bash

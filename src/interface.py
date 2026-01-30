@@ -730,9 +730,11 @@ def create_interface():
                 gr.update(choices=custom, value=custom[0] if custom else None)
             )
 
+        # queue=False: SSE 대신 일반 HTTP 요청 사용 (로딩 문제 방지)
         demo.load(
             fn=refresh_model_lists,
-            outputs=[commercial_model_dropdown, huggingface_model_dropdown]
+            outputs=[commercial_model_dropdown, huggingface_model_dropdown],
+            queue=False
         )
 
     return demo
