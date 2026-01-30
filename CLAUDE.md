@@ -221,3 +221,4 @@ location /tokenizer/ {
 - Model names are normalized to lowercase
 - Commercial models identified by keywords: "claude", "gemini", "gpt", "o1", "o3"
 - HuggingFace models require internet for first-time tokenizer download
+- **Do NOT use `root_path` in FastAPI** when nginx strips the prefix with `rewrite`. Using both causes StaticFiles mount to fail, returning index.html for all asset requests
