@@ -60,19 +60,27 @@ Additional environment variables:
 
 **Entry Point**: `src/server.py` launches the Gradio interface via `create_interface()` with `root_path="/tokenizer"` for nginx proxy support.
 
-**Main Interface Logic**: `src/interface.py` contains all UI construction and the main `process_input()` function that:
+**Main Interface Logic**: `src/interface.py` contains tab-based UI and the main `process_input_new()` function that:
 1. Validates input (model name, API keys, file size)
-2. Determines model type (commercial vs Hugging Face)
+2. Determines model type based on selected tab (commercial vs Hugging Face)
 3. Handles file parsing or text input via helper functions
 4. Routes to appropriate tokenization method
-5. Updates history and model lists
+5. Calculates cost estimation and context window usage
+6. Updates history and model lists
+
+**UI Structure** (Tab-based, no Radio buttons):
+- Model type tabs: Commercial Models / HuggingFace Models
+- Input method tabs (nested): Text Input / File Upload
+- Dropdown with `allow_custom_value=True` for model selection (search + custom input)
+- Results display: Token count, Estimated cost, Context window usage
+- `demo.load()` event refreshes model lists on page load
 
 **Helper Functions** (in `interface.py`):
 - `validate_model_name()`, `validate_api_key_for_model()`, `validate_file_size()` - Input validation
-- `parse_uploaded_file()`, `get_input_data()` - File/text processing (deduplicated)
-- `create_history_entry()`, `update_history()` - History management (deduplicated)
+- `parse_uploaded_file()` - File processing
+- `create_history_entry()`, `update_history()` - History management
 - `count_tokens_claude()`, `count_tokens_gemini()`, `count_tokens_gpt()` - Vendor-specific counting
-- `create_success_response()`, `create_error_response()` - Standardized responses
+- `format_cost_display()`, `format_context_display()` - Result formatting
 
 **Custom Exceptions** (in `interface.py`):
 - `ValidationError`, `APIKeyMissingError`, `FileSizeExceededError`, `ModelNameError`, `InputEmptyError`
@@ -103,6 +111,13 @@ Additional environment variables:
 - `has_anthropic_key()`, `has_google_key()`, `has_openai_key()` - API key validation
 - `get_max_file_size_bytes()` - File size limit (default: 20MB)
 
+**Pricing Info**: `src/utils/pricing.py` provides model cost and context window data:
+- `MODEL_INFO` dictionary with input prices (per 1M tokens) and context windows
+- `calculate_cost()` - Estimates cost in USD for given token count
+- `get_context_usage()` - Returns context window usage percentage
+- `format_context_window()` - Formats sizes as "128K", "1M", etc.
+- Supports partial matching for model variants (e.g., "claude-3-5-sonnet-20241022" → "claude-3-5-sonnet")
+
 ### Key Design Patterns
 
 1. **Caching Strategy**:
@@ -117,7 +132,7 @@ Additional environment variables:
 4. **Vendor-Specific Token Counting**: Commercial models require different APIs:
    - Claude: Uses exact model name, subtracts 7 template tokens
    - Gemini: Uses `client.models.count_tokens()`
-   - GPT: Uses `tiktoken.encoding_for_model()`
+   - GPT: Uses `tiktoken.encoding_for_model()` with fallback to gpt-4o for unknown models (e.g., gpt-5 series)
 
 5. **Input Validation**: All inputs validated before processing:
    - Model names checked for emptiness and minimum length
@@ -150,10 +165,13 @@ PYTHONPATH=src pytest tests/ -v
 
 ## Important Notes
 
-- The application supports both dropdown selection and direct model ID input for flexibility
+- The UI uses tabs instead of radio buttons for model type and input method selection
+- Dropdowns support both selection and custom text input (`allow_custom_value=True`)
+- Model lists refresh automatically on page load via `demo.load()` event
 - New models are automatically lowercase-normalized and added to the persistent model store
 - File uploads are validated by extension and size (max 20MB) before parsing
-- The UI dynamically shows/hides input fields based on selected model type and input method
-- Commercial models must contain keywords "claude", "gemini", or "gpt" in their model ID for proper routing
+- Commercial models must contain keywords "claude", "gemini", "gpt", or start with "o1"/"o3" for proper routing
+- GPT-5 and other new OpenAI models fallback to gpt-4o tokenizer
+- Results show token count, estimated cost ($), and context window usage (%)
 - Language toggle is in top-right corner and updates all UI text dynamically
 - API keys are loaded from `SETTINGS` (via `.env`), not `os.environ.get()` directly

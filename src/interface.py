@@ -8,6 +8,7 @@ from parsers import parse_pdf, parse_docx, parse_text
 from utils.config import SETTINGS
 from utils.logger import get_logger
 from utils.languages import language_manager, KOREAN, ENGLISH
+from utils.pricing import calculate_cost, get_context_usage, format_context_window
 import tiktoken
 from dotenv import load_dotenv
 from utils.model_store import get_official_models, get_custom_models, add_official_model, add_custom_model
@@ -120,7 +121,7 @@ def validate_file_size(file_path: str) -> None:
         )
 
 
-# ==================== 파일 파싱 헬퍼 (중복 제거) ====================
+# ==================== 파일 파싱 헬퍼 ====================
 
 def parse_uploaded_file(uploaded_file, logs: list) -> str:
     """
@@ -170,50 +171,23 @@ def parse_uploaded_file(uploaded_file, logs: list) -> str:
         raise Exception(language_manager.get_text("file_parsing_error", str(e)))
 
 
-def get_input_data(input_mode: str, text_input: str, uploaded_file, logs: list) -> str:
-    """
-    입력 모드에 따른 데이터 가져오기
+# ==================== 히스토리 헬퍼 ====================
 
-    Args:
-        input_mode: 입력 모드 ("텍스트 입력" 또는 "파일 업로드")
-        text_input: 텍스트 입력값
-        uploaded_file: 업로드된 파일
-        logs: 로그 메시지 리스트
-
-    Returns:
-        처리할 텍스트 데이터
-
-    Raises:
-        InputEmptyError: 입력이 비어있을 때
-        Exception: 파일 파싱 에러
-    """
-    if input_mode == language_manager.get_text("file_upload"):
-        return parse_uploaded_file(uploaded_file, logs)
-    elif input_mode == language_manager.get_text("text_input"):
-        if not text_input or not text_input.strip():
-            raise InputEmptyError(language_manager.get_text("text_input_empty"))
-        return text_input
-    else:
-        raise ValueError(language_manager.get_text("select_input_method"))
-
-
-# ==================== 히스토리 헬퍼 (중복 제거) ====================
-
-def create_history_entry(input_mode: str, text_input: str, uploaded_file, model_name: str, count: int) -> list:
+def create_history_entry(text_input: str, uploaded_file, model_name: str, count: int, is_file_mode: bool) -> list:
     """
     히스토리 항목 생성
 
     Args:
-        input_mode: 입력 모드
         text_input: 텍스트 입력값
         uploaded_file: 업로드된 파일
         model_name: 모델 이름
         count: 토큰 수
+        is_file_mode: 파일 모드 여부
 
     Returns:
         [display_input, model_name, count] 형식의 리스트
     """
-    if input_mode == language_manager.get_text("file_upload") and uploaded_file:
+    if is_file_mode and uploaded_file:
         display_input = uploaded_file.name.split('/')[-1].split('\\')[-1]
     else:
         display_input = text_input if len(text_input or '') <= 10 else (text_input[:10] + '...')
@@ -233,47 +207,6 @@ def update_history(history_state: list, new_row: list) -> list:
         업데이트된 히스토리
     """
     return ([new_row] + history_state)[:5]
-
-
-def create_success_response(logs: list, count: int, history_state: list, new_row: list):
-    """
-    성공 응답 생성
-
-    Args:
-        logs: 로그 메시지 리스트
-        count: 토큰 수
-        history_state: 현재 히스토리
-        new_row: 새 히스토리 항목
-
-    Returns:
-        Gradio 출력용 튜플
-    """
-    updated_official = get_official_models()
-    updated_custom = get_custom_models()
-    new_history = update_history(history_state, new_row)
-
-    return (
-        "\n".join(logs),
-        str(count),
-        gr.update(choices=updated_official),
-        gr.update(choices=updated_custom),
-        new_history,
-        gr.update(value=new_history)
-    )
-
-
-def create_error_response(message: str, history_state: list):
-    """
-    에러 응답 생성
-
-    Args:
-        message: 에러 메시지
-        history_state: 현재 히스토리 (변경 없음)
-
-    Returns:
-        Gradio 출력용 튜플
-    """
-    return (message, "", None, None, history_state, None)
 
 
 # ==================== 토큰 카운팅 헬퍼 ====================
@@ -329,7 +262,11 @@ def count_tokens_gpt(model_name: str, data: str) -> int:
     Returns:
         토큰 수
     """
-    encoder = tiktoken.encoding_for_model(model_name)
+    try:
+        encoder = tiktoken.encoding_for_model(model_name)
+    except KeyError:
+        # gpt-5 등 새 모델은 gpt-4o와 같은 토크나이저 사용
+        encoder = tiktoken.encoding_for_model("gpt-4o")
     return len(encoder.encode(data))
 
 
@@ -361,7 +298,7 @@ def count_tokens_commercial(model_name: str, data: str, logs: list) -> int:
             validate_api_key_for_model(model_name)
             return count_tokens_gemini(model_name, data)
 
-        elif "gpt" in model_name:
+        elif "gpt" in model_name or model_name.startswith("o1") or model_name.startswith("o3"):
             return count_tokens_gpt(model_name, data)
 
         else:
@@ -376,99 +313,142 @@ def count_tokens_commercial(model_name: str, data: str, logs: list) -> int:
         if "gemini" in model_name:
             logger.error(f"Google API error: {e}")
             raise Exception(language_manager.get_text("api_error_google", str(e)))
-        elif "gpt" in model_name:
+        elif "gpt" in model_name or model_name.startswith("o"):
             logger.error(f"tiktoken error: {e}")
             raise Exception(language_manager.get_text("api_error_openai", str(e)))
         raise
 
 
+def is_commercial_model(model_name: str) -> bool:
+    """모델이 상용 모델인지 확인"""
+    keywords = ["claude", "gemini", "gpt", "o1", "o3"]
+    return any(kw in model_name for kw in keywords) or model_name.startswith("o1") or model_name.startswith("o3")
+
+
+# ==================== 결과 포맷팅 헬퍼 ====================
+
+def format_cost_display(model_name: str, token_count: int) -> str:
+    """비용 표시 문자열 생성"""
+    cost = calculate_cost(model_name, token_count)
+    if cost is None:
+        return language_manager.get_text("cost_unknown")
+    if cost < 0.01:
+        return f"~${cost:.6f}"
+    return f"~${cost:.4f}"
+
+
+def format_context_display(model_name: str, token_count: int) -> str:
+    """컨텍스트 사용률 표시 문자열 생성"""
+    result = get_context_usage(model_name, token_count)
+    if result is None:
+        return language_manager.get_text("context_unknown")
+    usage_percent, context_window = result
+    formatted_window = format_context_window(context_window)
+    return f"{usage_percent:.2f}% of {formatted_window}"
+
+
 # ==================== 메인 처리 함수 ====================
 
-def process_input(model_type, official_select_mode, official_dropdown, official_input,
-                  custom_select_mode, custom_dropdown, custom_input,
-                  input_mode, text_input, uploaded_file, history_state):
+def process_input_new(model_name_raw: str, text_input: str, uploaded_file,
+                      is_commercial: bool, is_file_mode: bool, history_state: list):
     """
-    토큰 카운팅 메인 처리 함수
+    토큰 카운팅 메인 처리 함수 (새 UI용)
 
-    헬퍼 함수를 사용하여:
-    - 입력 유효성 검사
-    - 파일 파싱 (중복 제거됨)
-    - 모델별 토큰 카운팅
-    - 히스토리 업데이트 (중복 제거됨)
-    - 구체적인 예외 처리
+    Args:
+        model_name_raw: 선택된 모델 이름
+        text_input: 텍스트 입력 (텍스트 모드일 때)
+        uploaded_file: 업로드된 파일 (파일 모드일 때)
+        is_commercial: 상용 모델 탭인지 여부
+        is_file_mode: 파일 입력 모드인지 여부
+        history_state: 현재 히스토리 상태
     """
     logs = []
 
     try:
-        if model_type == language_manager.get_text("commercial_model"):
-            # 모델 이름 가져오기 및 검증
-            if official_select_mode == language_manager.get_text("select_from_list"):
-                model_name_raw = official_dropdown
-            else:
-                model_name_raw = official_input
+        # 모델 이름 검증
+        model_name = validate_model_name(model_name_raw)
 
-            model_name = validate_model_name(model_name_raw)
+        # 입력 데이터 가져오기
+        if is_file_mode:
+            data = parse_uploaded_file(uploaded_file, logs)
+        else:
+            if not text_input or not text_input.strip():
+                raise InputEmptyError(language_manager.get_text("text_input_empty"))
+            data = text_input
+
+        if is_commercial:
             logs.append(language_manager.get_text("commercial_token_mode", model_name))
-
-            # 입력 데이터 가져오기 (헬퍼 함수 사용 - 중복 제거)
-            data = get_input_data(input_mode, text_input, uploaded_file, logs)
-
-            # 토큰 수 계산 (구체적인 예외 처리 포함)
             count = count_tokens_commercial(model_name, data, logs)
-            logs.append(language_manager.get_text("complete"))
-
-            # 모델 저장 및 히스토리 업데이트 (헬퍼 함수 사용 - 중복 제거)
             add_official_model(model_name)
-            new_row = create_history_entry(input_mode, text_input, uploaded_file, model_name, count)
-            return create_success_response(logs, count, history_state, new_row)
-
-        elif model_type == language_manager.get_text("huggingface_model"):
-            # 모델 이름 가져오기 및 검증
-            if custom_select_mode == language_manager.get_text("select_from_list"):
-                model_name_raw = custom_dropdown
-            else:
-                model_name_raw = custom_input
-
-            model_name = validate_model_name(model_name_raw)
+        else:
             logs.append(language_manager.get_text("loading_tokenizer", model_name))
-
-            # 토크나이저 로드
             try:
                 tokenizer = load_tokenizer(model_name)
                 logs.append(language_manager.get_text("tokenizer_load_complete"))
-                add_custom_model(model_name)  # 성공 후 모델 저장
+                add_custom_model(model_name)
             except Exception as e:
                 logger.error(f"Tokenizer load error for {model_name}: {e}")
                 logs.append(language_manager.get_text("tokenizer_load_error", str(e)))
-                return create_error_response("\n".join(logs), history_state)
+                return (
+                    "\n".join(logs),
+                    "",
+                    language_manager.get_text("cost_unknown"),
+                    language_manager.get_text("context_unknown"),
+                    gr.update(choices=get_official_models()),
+                    gr.update(choices=get_custom_models()),
+                    history_state,
+                    gr.update(value=history_state)
+                )
 
-            # 입력 데이터 가져오기 (헬퍼 함수 사용 - 중복 제거)
-            data = get_input_data(input_mode, text_input, uploaded_file, logs)
-
-            # 토큰 수 계산
             logs.append(language_manager.get_text("calculating_tokens"))
             count = count_tokens(tokenizer, data)
-            logs.append(language_manager.get_text("complete"))
 
-            # 히스토리 업데이트 (헬퍼 함수 사용 - 중복 제거)
-            new_row = create_history_entry(input_mode, text_input, uploaded_file, model_name, count)
-            return create_success_response(logs, count, history_state, new_row)
+        logs.append(language_manager.get_text("complete"))
 
-        else:
-            return create_error_response(
-                language_manager.get_text("select_model_type"),
-                history_state
-            )
+        # 결과 생성
+        cost_display = format_cost_display(model_name, count)
+        context_display = format_context_display(model_name, count)
+
+        # 히스토리 업데이트
+        new_row = create_history_entry(text_input, uploaded_file, model_name, count, is_file_mode)
+        new_history = update_history(history_state, new_row)
+
+        return (
+            "\n".join(logs),
+            str(count),
+            cost_display,
+            context_display,
+            gr.update(choices=get_official_models()),
+            gr.update(choices=get_custom_models()),
+            new_history,
+            gr.update(value=new_history)
+        )
 
     except ValidationError as e:
-        # 모든 유효성 검사 에러 통합 처리
         logs.append(str(e))
-        return create_error_response("\n".join(logs), history_state)
+        return (
+            "\n".join(logs),
+            "",
+            "",
+            "",
+            None,
+            None,
+            history_state,
+            None
+        )
     except Exception as e:
-        # 예상치 못한 에러
         logger.error(f"Unexpected error in process_input: {e}")
         logs.append(str(e))
-        return create_error_response("\n".join(logs), history_state)
+        return (
+            "\n".join(logs),
+            "",
+            "",
+            "",
+            None,
+            None,
+            history_state,
+            None
+        )
 
 
 def toggle_language():
@@ -480,53 +460,15 @@ def toggle_language():
     return new_lang
 
 
-def update_ui_language(lang):
-    """UI 언어 업데이트"""
-    return [
-        language_manager.get_text("title"),
-        language_manager.get_text("subtitle"),
-        gr.update(label=language_manager.get_text("model_type_label"),
-                  choices=[language_manager.get_text("commercial_model"), language_manager.get_text("huggingface_model")],
-                  value=language_manager.get_text("commercial_model")),
-        gr.update(label=language_manager.get_text("input_mode_commercial"),
-                  choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
-                  value=language_manager.get_text("select_from_list")),
-        gr.update(label=language_manager.get_text("commercial_model_select")),
-        gr.update(label=language_manager.get_text("model_id_input_commercial"),
-                  placeholder=language_manager.get_text("model_id_placeholder_commercial")),
-        gr.update(label=language_manager.get_text("input_mode_huggingface"),
-                  choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
-                  value=language_manager.get_text("select_from_list")),
-        gr.update(label=language_manager.get_text("huggingface_model_select")),
-        gr.update(label=language_manager.get_text("model_id_input_huggingface"),
-                  placeholder=language_manager.get_text("model_id_placeholder_huggingface")),
-        gr.update(label=language_manager.get_text("input_method"),
-                  choices=[language_manager.get_text("text_input"), language_manager.get_text("file_upload")],
-                  value=language_manager.get_text("text_input")),
-        gr.update(label=language_manager.get_text("text_input_label")),
-        gr.update(label=language_manager.get_text("file_upload_label")),
-        language_manager.get_text("result_title"),
-        language_manager.get_text("calculate_button"),
-        gr.update(label=language_manager.get_text("process_status")),
-        gr.update(label=language_manager.get_text("token_count")),
-        gr.update(headers=[
-            language_manager.get_text("history_input"),
-            language_manager.get_text("history_model"),
-            language_manager.get_text("history_count")
-        ]),
-        language_manager.get_text("language_setting"),
-        language_manager.get_text("korean") if lang == KOREAN else language_manager.get_text("english")
-    ]
-
-
 def create_interface():
+    """새로운 탭 기반 UI 생성"""
     # 현재 언어 코드 설정
     language_manager.set_language(SETTINGS.language)
 
     with gr.Blocks() as demo:
-        # UI 컴포넌트를 언어 리소스에서 가져오기
+        # 타이틀 및 안내
         title_md = gr.Markdown(language_manager.get_text("title"))
-        subtitle_md = gr.Markdown(language_manager.get_text("subtitle"))
+        quick_start_md = gr.Markdown(language_manager.get_text("quick_start"))
 
         # 언어 설정 (우측 상단에 배치)
         with gr.Row():
@@ -534,89 +476,221 @@ def create_interface():
                 pass
             with gr.Column(scale=1):
                 language_label = gr.Markdown(language_manager.get_text("language_setting"))
-                language_btn = gr.Button(language_manager.get_text("korean" if language_manager.language_code == KOREAN else "english"))
-
-        with gr.Row():
-            with gr.Column():
-                # 모델 유형(Radio)
-                model_type = gr.Radio(
-                    label=language_manager.get_text("model_type_label"),
-                    choices=[language_manager.get_text("commercial_model"), language_manager.get_text("huggingface_model")],
-                    value=language_manager.get_text("commercial_model")
+                language_btn = gr.Button(
+                    language_manager.get_text("korean" if language_manager.language_code == KOREAN else "english")
                 )
 
-                # 상용 모델 입력 방식 선택
-                official_select_mode = gr.Radio(
-                    label=language_manager.get_text("input_mode_commercial"),
-                    choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
-                    value=language_manager.get_text("select_from_list"),
-                    visible=True
-                )
-                official_model_dropdown = gr.Dropdown(
-                    label=language_manager.get_text("commercial_model_select"),
+        # 히스토리 상태
+        history_state = gr.State(INITIAL_HISTORY)
+
+        # 모델 유형 탭
+        with gr.Tabs() as model_tabs:
+            # ===== 상용 모델 탭 =====
+            with gr.Tab(language_manager.get_text("tab_commercial"), id="commercial") as commercial_tab:
+                commercial_model_dropdown = gr.Dropdown(
+                    label=language_manager.get_text("model_select_label"),
                     choices=get_official_models(),
-                    value=get_official_models()[0],
-                    visible=True
-                )
-                official_model_input = gr.Textbox(
-                    label=language_manager.get_text("model_id_input_commercial"),
-                    placeholder=language_manager.get_text("model_id_placeholder_commercial"),
-                    visible=False
+                    value=get_official_models()[0] if get_official_models() else None,
+                    allow_custom_value=True,
+                    filterable=True,
+                    info=language_manager.get_text("model_placeholder_commercial")
                 )
 
-                # 허깅페이스 모델 입력 방식 선택
-                custom_select_mode = gr.Radio(
-                    label=language_manager.get_text("input_mode_huggingface"),
-                    choices=[language_manager.get_text("select_from_list"), language_manager.get_text("direct_input")],
-                    value=language_manager.get_text("select_from_list"),
-                    visible=False
+                # 입력 방식 탭 (상용 모델)
+                with gr.Tabs() as commercial_input_tabs:
+                    with gr.Tab(language_manager.get_text("tab_text_input"), id="commercial_text"):
+                        commercial_text_input = gr.Textbox(
+                            label=language_manager.get_text("text_input_label"),
+                            placeholder=language_manager.get_text("text_placeholder"),
+                            lines=6
+                        )
+                    with gr.Tab(language_manager.get_text("tab_file_upload"), id="commercial_file"):
+                        commercial_file_input = gr.File(
+                            label=language_manager.get_text("file_upload_label"),
+                            file_types=[".pdf", ".txt", ".md", ".docx"]
+                        )
+
+                commercial_count_button = gr.Button(
+                    language_manager.get_text("calculate_button"),
+                    variant="primary",
+                    size="lg"
                 )
-                custom_model_dropdown = gr.Dropdown(
-                    label=language_manager.get_text("huggingface_model_select"),
+
+            # ===== 허깅페이스 모델 탭 =====
+            with gr.Tab(language_manager.get_text("tab_huggingface"), id="huggingface") as huggingface_tab:
+                huggingface_model_dropdown = gr.Dropdown(
+                    label=language_manager.get_text("model_select_label"),
                     choices=get_custom_models(),
-                    value=get_custom_models()[0],
-                    visible=False
-                )
-                custom_model_input = gr.Textbox(
-                    label=language_manager.get_text("model_id_input_huggingface"),
-                    placeholder=language_manager.get_text("model_id_placeholder_huggingface"),
-                    visible=False
+                    value=get_custom_models()[0] if get_custom_models() else None,
+                    allow_custom_value=True,
+                    filterable=True,
+                    info=language_manager.get_text("model_placeholder_huggingface")
                 )
 
-                input_mode = gr.Radio(
-                    label=language_manager.get_text("input_method"),
-                    choices=[language_manager.get_text("text_input"), language_manager.get_text("file_upload")],
-                    value=language_manager.get_text("text_input")
-                )
-                text_input = gr.Textbox(
-                    label=language_manager.get_text("text_input_label"),
-                    lines=8,
-                    visible=True
-                )
-                file_input = gr.File(
-                    label=language_manager.get_text("file_upload_label"),
-                    file_types=[".pdf", ".txt", ".md", ".docx"],
-                    visible=False
+                # 입력 방식 탭 (허깅페이스 모델)
+                with gr.Tabs() as huggingface_input_tabs:
+                    with gr.Tab(language_manager.get_text("tab_text_input"), id="huggingface_text"):
+                        huggingface_text_input = gr.Textbox(
+                            label=language_manager.get_text("text_input_label"),
+                            placeholder=language_manager.get_text("text_placeholder"),
+                            lines=6
+                        )
+                    with gr.Tab(language_manager.get_text("tab_file_upload"), id="huggingface_file"):
+                        huggingface_file_input = gr.File(
+                            label=language_manager.get_text("file_upload_label"),
+                            file_types=[".pdf", ".txt", ".md", ".docx"]
+                        )
+
+                huggingface_count_button = gr.Button(
+                    language_manager.get_text("calculate_button"),
+                    variant="primary",
+                    size="lg"
                 )
 
-            with gr.Column():
-                result_markdown = gr.Markdown(language_manager.get_text("result_title"))
-                count_button = gr.Button(language_manager.get_text("calculate_button"))
-                status_output = gr.Textbox(label=language_manager.get_text("process_status"), lines=4, interactive=False)
-                count_output = gr.Textbox(label=language_manager.get_text("token_count"), interactive=False)
-                # 최근 기록 테이블 및 상태
-                history_state = gr.State(INITIAL_HISTORY)
-                history_table = gr.DataFrame(
-                    value=INITIAL_HISTORY,
-                    headers=[
-                        language_manager.get_text("history_input"),
-                        language_manager.get_text("history_model"),
-                        language_manager.get_text("history_count")
-                    ],
-                    interactive=False
-                )
+        # ===== 결과 영역 =====
+        with gr.Group():
+            result_markdown = gr.Markdown(language_manager.get_text("result_title"))
 
-        # 언어 변경 이벤트 핸들링
+            # 토큰, 비용, 컨텍스트 3열 표시
+            with gr.Row():
+                with gr.Column(scale=1):
+                    count_output = gr.Textbox(
+                        label=language_manager.get_text("tokens_label"),
+                        interactive=False,
+                        container=True
+                    )
+                with gr.Column(scale=1):
+                    cost_output = gr.Textbox(
+                        label=language_manager.get_text("estimated_cost"),
+                        interactive=False,
+                        container=True
+                    )
+                with gr.Column(scale=1):
+                    context_output = gr.Textbox(
+                        label=language_manager.get_text("context_window"),
+                        interactive=False,
+                        container=True
+                    )
+
+            status_output = gr.Textbox(
+                label=language_manager.get_text("process_status"),
+                lines=2,
+                interactive=False
+            )
+
+        # 히스토리 테이블
+        with gr.Group():
+            history_label = gr.Markdown(language_manager.get_text("recent_history"))
+            history_table = gr.DataFrame(
+                value=INITIAL_HISTORY,
+                headers=[
+                    language_manager.get_text("history_input"),
+                    language_manager.get_text("history_model"),
+                    language_manager.get_text("history_count")
+                ],
+                interactive=False
+            )
+
+        # ===== 상용 모델 버튼 이벤트 =====
+        # 텍스트 모드
+        def process_commercial_text(model, text, history):
+            return process_input_new(model, text, None, True, False, history)
+
+        # 파일 모드
+        def process_commercial_file(model, file, history):
+            return process_input_new(model, "", file, True, True, history)
+
+        # 상용 모델 - 텍스트 입력 후 계산
+        commercial_count_button.click(
+            fn=lambda model, text, file, history: (
+                process_commercial_file(model, file, history) if file is not None
+                else process_commercial_text(model, text, history)
+            ),
+            inputs=[
+                commercial_model_dropdown,
+                commercial_text_input,
+                commercial_file_input,
+                history_state
+            ],
+            outputs=[
+                status_output,
+                count_output,
+                cost_output,
+                context_output,
+                commercial_model_dropdown,
+                huggingface_model_dropdown,
+                history_state,
+                history_table
+            ]
+        )
+
+        # ===== 허깅페이스 모델 버튼 이벤트 =====
+        def process_huggingface_text(model, text, history):
+            return process_input_new(model, text, None, False, False, history)
+
+        def process_huggingface_file(model, file, history):
+            return process_input_new(model, "", file, False, True, history)
+
+        huggingface_count_button.click(
+            fn=lambda model, text, file, history: (
+                process_huggingface_file(model, file, history) if file is not None
+                else process_huggingface_text(model, text, history)
+            ),
+            inputs=[
+                huggingface_model_dropdown,
+                huggingface_text_input,
+                huggingface_file_input,
+                history_state
+            ],
+            outputs=[
+                status_output,
+                count_output,
+                cost_output,
+                context_output,
+                commercial_model_dropdown,
+                huggingface_model_dropdown,
+                history_state,
+                history_table
+            ]
+        )
+
+        # ===== 언어 변경 이벤트 =====
+        def update_ui_language(lang):
+            """UI 언어 업데이트"""
+            return [
+                language_manager.get_text("title"),
+                language_manager.get_text("quick_start"),
+                language_manager.get_text("language_setting"),
+                language_manager.get_text("korean") if lang == KOREAN else language_manager.get_text("english"),
+                gr.update(
+                    label=language_manager.get_text("model_select_label"),
+                    info=language_manager.get_text("model_placeholder_commercial")
+                ),
+                gr.update(
+                    label=language_manager.get_text("model_select_label"),
+                    info=language_manager.get_text("model_placeholder_huggingface")
+                ),
+                gr.update(label=language_manager.get_text("text_input_label"),
+                          placeholder=language_manager.get_text("text_placeholder")),
+                gr.update(label=language_manager.get_text("file_upload_label")),
+                gr.update(label=language_manager.get_text("text_input_label"),
+                          placeholder=language_manager.get_text("text_placeholder")),
+                gr.update(label=language_manager.get_text("file_upload_label")),
+                language_manager.get_text("calculate_button"),
+                language_manager.get_text("calculate_button"),
+                language_manager.get_text("result_title"),
+                gr.update(label=language_manager.get_text("tokens_label")),
+                gr.update(label=language_manager.get_text("estimated_cost")),
+                gr.update(label=language_manager.get_text("context_window")),
+                gr.update(label=language_manager.get_text("process_status")),
+                language_manager.get_text("recent_history"),
+                gr.update(headers=[
+                    language_manager.get_text("history_input"),
+                    language_manager.get_text("history_model"),
+                    language_manager.get_text("history_count")
+                ])
+            ]
+
         language_btn.click(
             toggle_language,
             outputs=gr.State(language_manager.language_code)
@@ -624,100 +698,41 @@ def create_interface():
             update_ui_language,
             inputs=gr.State(language_manager.language_code),
             outputs=[
-                title_md, subtitle_md,
-                model_type,
-                official_select_mode,
-                official_model_dropdown,
-                official_model_input,
-                custom_select_mode,
-                custom_model_dropdown,
-                custom_model_input,
-                input_mode,
-                text_input,
-                file_input,
-                result_markdown,
-                count_button,
-                status_output,
-                count_output,
-                history_table,
+                title_md,
+                quick_start_md,
                 language_label,
-                language_btn
+                language_btn,
+                commercial_model_dropdown,
+                huggingface_model_dropdown,
+                commercial_text_input,
+                commercial_file_input,
+                huggingface_text_input,
+                huggingface_file_input,
+                commercial_count_button,
+                huggingface_count_button,
+                result_markdown,
+                count_output,
+                cost_output,
+                context_output,
+                status_output,
+                history_label,
+                history_table
             ]
         )
 
-        # 모델 유형 토글
-        def toggle_model_type(mode):
-            is_commercial = mode == language_manager.get_text("commercial_model")
+        # ===== 페이지 로드 시 모델 목록 새로고침 =====
+        def refresh_model_lists():
+            """페이지 로드 시 최신 모델 목록 반환"""
+            official = get_official_models()
+            custom = get_custom_models()
             return (
-                gr.update(visible=is_commercial),  # official_select_mode
-                gr.update(visible=is_commercial),  # official_model_dropdown
-                gr.update(visible=False),  # official_model_input
-                gr.update(visible=not is_commercial),  # custom_select_mode
-                gr.update(visible=not is_commercial),  # custom_model_dropdown
-                gr.update(visible=False)  # custom_model_input
+                gr.update(choices=official, value=official[0] if official else None),
+                gr.update(choices=custom, value=custom[0] if custom else None)
             )
 
-        model_type.change(
-            toggle_model_type,
-            inputs=[model_type],
-            outputs=[official_select_mode, official_model_dropdown, official_model_input, custom_select_mode, custom_model_dropdown, custom_model_input]
-        )
-
-        # 상용 모델 입력 방식 토글
-        def toggle_official_input_mode(mode):
-            is_dropdown = mode == language_manager.get_text("select_from_list")
-            return (
-                gr.update(visible=is_dropdown),
-                gr.update(visible=not is_dropdown)
-            )
-
-        official_select_mode.change(
-            toggle_official_input_mode,
-            inputs=[official_select_mode],
-            outputs=[official_model_dropdown, official_model_input]
-        )
-
-        # 허깅페이스 모델 입력 방식 토글
-        def toggle_custom_input_mode(mode):
-            is_dropdown = mode == language_manager.get_text("select_from_list")
-            return (
-                gr.update(visible=is_dropdown),
-                gr.update(visible=not is_dropdown)
-            )
-
-        custom_select_mode.change(
-            toggle_custom_input_mode,
-            inputs=[custom_select_mode],
-            outputs=[custom_model_dropdown, custom_model_input]
-        )
-
-        # 입력 방식 선택
-        def toggle_input_mode(mode):
-            is_text = mode == language_manager.get_text("text_input")
-            return (
-                gr.update(visible=is_text),
-                gr.update(visible=not is_text)
-            )
-
-        input_mode.change(
-            toggle_input_mode,
-            inputs=[input_mode],
-            outputs=[text_input, file_input]
-        )
-
-        # 토큰 계산 실행
-        count_button.click(
-            fn=process_input,
-            inputs=[
-                model_type, official_select_mode, official_model_dropdown, official_model_input,
-                custom_select_mode, custom_model_dropdown, custom_model_input,
-                input_mode, text_input, file_input, history_state
-            ],
-            outputs=[
-                status_output, count_output,
-                official_model_dropdown, custom_model_dropdown,
-                history_state, history_table
-            ]
+        demo.load(
+            fn=refresh_model_lists,
+            outputs=[commercial_model_dropdown, huggingface_model_dropdown]
         )
 
     return demo

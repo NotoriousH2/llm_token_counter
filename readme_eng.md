@@ -25,9 +25,10 @@ This tool provides a simple web interface to determine the number of tokens a gi
     * Paste text directly into the interface.
     * Upload files (`.pdf`, `.docx`, `.txt`, `.md`).
 * **Easy Model Selection**:
-    * Choose from pre-populated lists of popular models.
-    * Directly input any specific model ID (for commercial models) or Hugging Face model identifier (`username/model-name`).
-* **User-Friendly Interface**: Built with Gradio for a simple and interactive web UI.
+    * Select from dropdown or type custom model ID (searchable with custom input support).
+    * Newly used models are automatically added to the list.
+* **Cost & Context Info**: Displays estimated cost ($) and context window usage (%) alongside token count.
+* **Intuitive Tab-based UI**: Model type (Commercial/HuggingFace) and input method (Text/File) organized as tabs for easy navigation.
 * **Calculation History**: View a list of your recent token count calculations.
 * **Multi-language Support**: Switch the interface between English and Korean.
 * **Caching**: Efficiently caches loaded Hugging Face tokenizers and parsed file content.
@@ -100,15 +101,14 @@ This `llm_token_counter` helps you easily find the token count for your text usi
     * Open your web browser and navigate to the URL provided (usually `http://127.0.0.1:7860` or `http://0.0.0.0:7860`).
 
 3.  **Calculate Tokens:**
-    * Select the **Model Type** (Commercial or Huggingface).
-    * Choose the **Model Input Method** (Select from List or Direct Input).
-        * If "Select from List", choose a model from the dropdown.
-        * If "Direct Input", type the specific model ID.
-    * Select the **Input Method** (Text Input or File Upload).
-        * If "Text Input", paste your text into the textbox.
-        * If "File Upload", upload your `.pdf`, `.docx`, `.txt`, or `.md` file.
+    * Select the **Model Type Tab** (Commercial Models or HuggingFace Models).
+    * **Select Model**: Choose from dropdown or type a custom model ID (searchable).
+    * Select the **Input Method Tab** (Text Input or File Upload).
+        * "Text Input" tab: Paste your text into the textbox.
+        * "File Upload" tab: Upload your `.pdf`, `.docx`, `.txt`, or `.md` file.
     * Click the **Calculate Tokens** button.
-    * View the processing status and the final token count in the results section. Your calculation will also appear in the history table.
+    * View **Token Count**, **Estimated Cost**, and **Context Usage** in the results section.
+    * Your calculation will also appear in the history table.
 
 ## Supported Models
 

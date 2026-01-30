@@ -254,6 +254,68 @@ TEXT_RESOURCES = {
     "text_input_empty": {
         KOREAN: "텍스트가 비어있습니다. 텍스트를 입력해주세요.",
         ENGLISH: "Text input is empty. Please enter some text."
+    },
+
+    # 새 UI 관련 텍스트
+    "quick_start": {
+        KOREAN: "**빠른 시작**: 모델 선택 → 텍스트 입력 → 계산 버튼 클릭",
+        ENGLISH: "**Quick Start**: Select model → Enter text → Click calculate"
+    },
+    "tab_commercial": {
+        KOREAN: "상용 모델",
+        ENGLISH: "Commercial Models"
+    },
+    "tab_huggingface": {
+        KOREAN: "허깅페이스 모델",
+        ENGLISH: "HuggingFace Models"
+    },
+    "tab_text_input": {
+        KOREAN: "텍스트 입력",
+        ENGLISH: "Text Input"
+    },
+    "tab_file_upload": {
+        KOREAN: "파일 업로드",
+        ENGLISH: "File Upload"
+    },
+    "model_select_label": {
+        KOREAN: "모델 선택",
+        ENGLISH: "Select Model"
+    },
+    "model_placeholder_commercial": {
+        KOREAN: "모델 선택 또는 직접 입력 (예: gpt-4o, claude-3-5-sonnet)",
+        ENGLISH: "Select or type model (e.g., gpt-4o, claude-3-5-sonnet)"
+    },
+    "model_placeholder_huggingface": {
+        KOREAN: "모델 선택 또는 직접 입력 (예: meta-llama/llama-4)",
+        ENGLISH: "Select or type model (e.g., meta-llama/llama-4)"
+    },
+    "text_placeholder": {
+        KOREAN: "여기에 텍스트를 붙여넣으세요.\n예: 안녕하세요, 토큰 계산 테스트입니다.",
+        ENGLISH: "Paste your text here.\nExample: Hello, this is a token count test."
+    },
+    "estimated_cost": {
+        KOREAN: "예상 비용",
+        ENGLISH: "Est. Cost"
+    },
+    "context_window": {
+        KOREAN: "컨텍스트 사용률",
+        ENGLISH: "Context Usage"
+    },
+    "tokens_label": {
+        KOREAN: "토큰",
+        ENGLISH: "Tokens"
+    },
+    "recent_history": {
+        KOREAN: "최근 기록",
+        ENGLISH: "Recent History"
+    },
+    "cost_unknown": {
+        KOREAN: "가격 정보 없음",
+        ENGLISH: "Price info N/A"
+    },
+    "context_unknown": {
+        KOREAN: "컨텍스트 정보 없음",
+        ENGLISH: "Context info N/A"
     }
 }
 
